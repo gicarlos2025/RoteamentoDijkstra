@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Roteamento Urbano</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Georgia, "Times New Roman", serif;
+            margin: 0; 
+            padding: 28px;
+            background: #07111a;
+            color: #e2e8f0;
+        }
+        .app-header { max-width: 1440px; margin: 0 auto 22px; display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+        .eyebrow { margin: 0 0 6px; color: #fbbf24; font: 700 0.72em/1.2 ui-sans-serif, sans-serif; letter-spacing: 0.14em; text-transform: uppercase; }
+        h1 { margin: 0; color: #f8fafc; font-size: 2.6rem; line-height: 1; font-weight: 500; }
+        .header-note { max-width: 340px; margin: 0; color: #91a4b5; font: 0.9em/1.45 ui-sans-serif, sans-serif; text-align: right; }
+        .container {
+            display: flex;
+            gap: 20px; 
+            max-width: 1440px; 
+            margin: 0 auto; 
+            align-items: flex-start;
+        }
+        .painel { 
+            background: #102231;
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+            width: 360px;
+            flex-shrink: 0;
+        }
+        .painel h3 {
+            margin: 0 0 14px 0;
+            font-size: 1.15em;
+            color: #fbbf24;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 8px;
+        }
+        .mapa-box {
+            padding: 10px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+            flex-grow: 1;
+        }
+        .mapa-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 8px 12px; font: 700 0.82em ui-sans-serif, sans-serif; color: #cbd5e1; }
+        .mapa-header span:last-child { color: #70879a; font-weight: 500; }
+        .dijkstra-card { margin: 0 0 12px; padding: 13px; border: 1px solid #345064; border-radius: 6px; background: #0b1a27; }
+        .dijkstra-card-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 8px; color: #fbbf24; font: 700 0.8em ui-sans-serif, sans-serif; }
+        .dijkstra-card-header span:last-child { color: #7890a1; font-weight: 500; }
+        #dijkstraCanvas { width: 100%; height: auto; min-height: 130px; border: 0; background: transparent; }
+        .dijkstra-resumo { display: flex; flex-wrap: wrap; gap: 7px 18px; margin-top: 7px; color: #7890a1; font: 0.72em ui-sans-serif, sans-serif; }
+        .dijkstra-resumo strong { color: #dbeafe; font-size: 1.15em; }
+        canvas {
+            border: 1px solid #334155; 
+            border-radius: 6px;
+            background: #09151f;
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 1000px;
+        }
+        .form-group { 
+            margin-bottom: 12px; 
+        }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: 600; 
+            font-size: 0.84em; 
+            color: #94a3b8;
+        }
+        select, button {
+            width: 100%; 
+            padding: 9px 12px; 
+            border-radius: 6px; 
+            border: 1px solid #475569; 
+            font-size: 0.88em;
+            outline: none;
+            background-color: #09151f;
+            color: #f8fafc;
+        }
+        select:focus {
+            border-color: #38bdf8;
+        }
+        button {
+            background: #d97706;
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 600; 
+            margin-top: 6px; 
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #b45309;
+        }
+        .instrucao { margin: 10px 0 0; color: #7890a1; font: 0.72em/1.4 ui-sans-serif, sans-serif; }
+        .info-box { 
+            margin-top: 14px; 
+            font-size: 0.82em; 
+            border-top: 1px solid #334155; 
+            padding-top: 10px; 
+        }
+        .info-box p {
+            margin: 6px 0;
+            line-height: 1.3;
+        }
+        .metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 14px; }
+        .metrica { padding: 9px 7px; background: #0b1a27; border: 1px solid #263d4d; border-radius: 4px; text-align: center; font-family: ui-sans-serif, sans-serif; }
+        .metrica strong { display: block; color: #f8fafc; font-size: 1.15em; }
+        .metrica span { color: #7890a1; font-size: 0.68em; text-transform: uppercase; }
+        .legenda { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 13px; color: #91a4b5; font: 0.72em ui-sans-serif, sans-serif; }
+        .legenda span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: var(--cor); }
+        .legenda .bloqueio::before { border-radius: 0; background: #ef4444; }
+
+        /* Timeline vertical animada do trajeto */
+        .trajeto-timeline {
+            margin-top: 14px;
+            border-top: 1px solid #334155;
+            padding-top: 12px;
+        }
+        .trajeto-timeline-titulo {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #38bdf8;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .timeline-lista {
+            max-height: 280px;
+            overflow-y: auto;
+            padding-left: 4px;
+            padding-right: 6px;
+        }
+        .timeline-item {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding-bottom: 16px;
+            opacity: 0;
+            transform: translateX(-15px);
+            animation: slideIn 0.35s ease forwards;
+        }
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        /* Linha conectora vertical */
+        .timeline-item:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            top: 20px;
+            left: 10px;
+            width: 2px;
+            height: calc(100% - 16px);
+            background: #334155;
+            transition: background 0.3s;
+        }
+        .timeline-item.concluido:not(:last-child)::after {
+            background: #10b981;
+        }
+        .timeline-bullet {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #1e293b;
+            border: 2px solid #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            font-weight: bold;
+            color: #94a3b8;
+            flex-shrink: 0;
+            z-index: 1;
+            transition: all 0.25s ease;
+        }
+        .timeline-texto {
+            font-size: 0.8em;
+            line-height: 1.25;
+        }
+        .timeline-texto .nome-no {
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+        .timeline-texto .detalhe-no {
+            font-size: 0.85em;
+            color: #64748b;
+        }
+
+        /* Estados do trajeto sincronizados com o carro */
+        .timeline-item.ativo .timeline-bullet {
+            border-color: #38bdf8;
+            background: #0284c7;
+            color: white;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+            transform: scale(1.15);
+        }
+        .timeline-item.ativo .nome-no {
+            color: #38bdf8;
+        }
+        .timeline-item.concluido .timeline-bullet {
+            border-color: #10b981;
+            background: #10b981;
+            color: #0f172a;
+        }
+        .timeline-item.concluido .nome-no {
+            color: #10b981;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @media (max-width: 900px) { body { padding: 16px; } h1 { font-size: 2rem; } .app-header { display: block; } .header-note { margin-top: 10px; text-align: left; } .container { display: block; } .painel { width: 100%; margin-bottom: 16px; } .mapa-box { overflow: hidden; } }
+    </style>
+</head>
+<body>
+
+<audio id="musicaFundo" src="/audio/fundo" loop preload="auto"></audio>
+
+<header class="app-header">
+    <div><p class="eyebrow">Centro de operacao · MVP</p><h1>Roteamento urbano</h1></div>
+    <p class="header-note">Simule o impacto do clima e das condicoes viarias sobre o melhor caminho da cidade.</p>
+</header>
+
+<div class="container">
+    <div class="painel">
+        <h3>Parâmetros de Rota</h3>
+        
+        <div class="form-group">
+            <label for="selectOrigem">Origem:</label>
+            <select id="selectOrigem" onchange="atualizarSelecaoVisual()"></select>
+        </div>
+        
+        <div class="form-group">
+            <label for="selectDestino">Destino:</label>
+            <select id="selectDestino" onchange="atualizarSelecaoVisual()"></select>
+        </div>
+
+        <div class="form-group">
+            <label for="selectClima">Cenario climatico:</label>
+            <select id="selectClima">
+                <option value="automatico">Automatico</option>
+                <option value="ensolarado">Ensolarado</option>
+                <option value="chuva_moderada">Chuva moderada</option>
+                <option value="tempestade">Tempestade</option>
+            </select>
+        </div>
+        
+        <button onclick="executarSimulacao()">Calcular Nova Rota</button>
+        <p class="instrucao">Uma rota inicial é calculada automaticamente. Ajuste origem e destino para explorar a malha.</p>
+
+        <div class="info-box">
+            <p><strong>Clima:</strong> <span id="txtClima">-</span></p>
+            <p><strong>Status:</strong> <span id="txtStatus" style="color: #38bdf8;">Aguardando simulação...</span></p>
+            <p><strong>Tempo Estimado:</strong> <span id="txtTempo">-</span></p>
+        </div>
+
+        <div class="metricas">
+            <div class="metrica"><strong id="txtTrechos">-</strong><span>trechos</span></div>
+            <div class="metrica"><strong id="txtBloqueios">-</strong><span>bloqueados</span></div>
+            <div class="metrica"><strong id="txtPontos">-</strong><span>pontos na rota</span></div>
+        </div>
+        <div class="legenda"><span style="--cor:#10b981">partida</span><span style="--cor:#ef4444">destino</span><span style="--cor:#f59e0b">atencao</span><span class="bloqueio">bloqueio</span></div>
+
+        <!-- Painel dinâmico do trajeto -->
+        <div class="trajeto-timeline">
+            <div class="trajeto-timeline-titulo">
+                <span>Trajeto em Tempo Real</span>
+                <span id="txtPassoTrajeto" style="font-size: 0.8em; color: #94a3b8;">0 etapas</span>
+            </div>
+            <div class="timeline-lista" id="timelineLista">
+                <div style="font-size: 0.8em; color: #64748b; font-style: italic;">Nenhuma rota ativa.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mapa-box">
+        <section class="dijkstra-card" aria-label="Visualização do algoritmo de Dijkstra">
+            <div class="dijkstra-card-header"><span>Traçado do algoritmo · Dijkstra</span><span id="txtDijkstraStatus">Aguardando cálculo</span></div>
+            <canvas id="dijkstraCanvas" width="900" height="180"></canvas>
+            <div class="dijkstra-resumo">
+                <span><strong id="txtNosAlcancaveis">-</strong> nós alcançáveis</span>
+                <span><strong id="txtArestasAvaliadas">-</strong> arestas avaliadas</span>
+                <span><strong id="txtEtapasDijkstra">-</strong> etapas selecionadas</span>
+            </div>
+        </section>
+        <div class="mapa-header"><span>Mapa operacional</span><span id="txtMapaStatus">Malha carregada</span></div>
+        <canvas id="mapaCanvas" width="950" height="700"></canvas>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("mapaCanvas");
+const ctx = canvas.getContext("2d");
+const dijkstraCanvas = document.getElementById("dijkstraCanvas");
+const dijkstraCtx = dijkstraCanvas.getContext("2d");
+
+const CORES_TIPO = {
+    cruzamento: "#38bdf8",
+    estabelecimento: "#c084fc",
+    casa: "#94a3b8",
+    centro_distribuicao: "#fb923c",
+    servico_publico: "#f87171",
+    escola: "#2dd4bf",
+    posto_combustivel: "#facc15",
+    industria: "#64748b"
+};
+
+let dadosAtuais = null;
+let animacaoId = null;
+let dijkstraAnimacaoId = null;
+let noFocado = null;
+const musicaFundo = document.getElementById("musicaFundo");
+
+function iniciarMusicaFundo() {
+    musicaFundo.volume = 0.6;
+    musicaFundo.play().catch(() => {
+        // O navegador pode exigir uma interação antes de liberar o áudio.
+    });
+}
+
+document.addEventListener("click", iniciarMusicaFundo, { once: true });
+
+canvas.addEventListener("mousemove", (e) => {
+    if (!dadosAtuais || !dadosAtuais.nos) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    let encontrado = null;
+    for (const [id, no] of Object.entries(dadosAtuais.nos)) {
+        const dist = Math.hypot(no.x - mouseX, no.y - mouseY);
+        if (dist <= 14) {
+            encontrado = { id, ...no };
+            break;
+        }
+    }
+    noFocado = encontrado;
+    canvas.style.cursor = encontrado ? "pointer" : "default";
+    desenharCenario(dadosAtuais);
+});
+
+function atualizarSelecaoVisual() {
+    if (dadosAtuais) desenharCenario(dadosAtuais);
+}
+
+function popularSelects(nos) {
+    const selOrigem = document.getElementById("selectOrigem");
+    const selDestino = document.getElementById("selectDestino");
+    selOrigem.innerHTML = "";
+    selDestino.innerHTML = "";
+
+    const ids = Object.keys(nos).sort();
+    ids.forEach((id) => {
+        const item = nos[id];
+        const rotulo = `${id} - ${item.nome}`;
+
+        const opt1 = document.createElement("option");
+        opt1.value = id;
+        opt1.textContent = rotulo;
+        selOrigem.appendChild(opt1);
+
+        const opt2 = document.createElement("option");
+        opt2.value = id;
+        opt2.textContent = rotulo;
+        selDestino.appendChild(opt2);
+    });
+
+    selecionarPontosAleatorios(ids);
+}
+
+function selecionarPontosAleatorios(ids) {
+    if (!ids || ids.length < 2) return;
+
+    const origemIndex = Math.floor(Math.random() * ids.length);
+    let destinoIndex = Math.floor(Math.random() * ids.length);
+    while (destinoIndex === origemIndex) {
+        destinoIndex = Math.floor(Math.random() * ids.length);
+    }
+
+    document.getElementById("selectOrigem").value = ids[origemIndex];
+    document.getElementById("selectDestino").value = ids[destinoIndex];
+}
+
+// Renderiza a lista de nós com animação escalonada
+function renderizarTimelineTrajeto(rota, nos) {
+    const lista = document.getElementById("timelineLista");
+    const labelPassos = document.getElementById("txtPassoTrajeto");
+    lista.innerHTML = "";
+
+    if (!rota || rota.length === 0) {
+        lista.innerHTML = `<div style="font-size: 0.8em; color: #ef4444;">Sem rota viável.</div>`;
+        labelPassos.innerText = "0 etapas";
+        return;
+    }
+
+    labelPassos.innerText = `${rota.length} pontos`;
+
+    rota.forEach((id, idx) => {
+        const no = nos[id] || { nome: "Ponto", bairro: "-", tipo: "" };
+        const item = document.createElement("div");
+        item.className = "timeline-item";
+        item.id = `timeline-step-${idx}`;
+        // Delay escalonado de aparição para efeito em cascata
+        item.style.animationDelay = `${idx * 0.08}s`;
+
+        item.innerHTML = `
+            <div class="timeline-bullet">${idx + 1}</div>
+            <div class="timeline-texto">
+                <div class="nome-no">${id}: ${no.nome}</div>
+                <div class="detalhe-no">${no.bairro} &bull; ${no.tipo}</div>
+            </div>
+        `;
+        lista.appendChild(item);
+    });
+}
+
+// Atualiza o estado visual da timeline à medida que o carro se desloca
+function atualizarProgressoTimeline(indiceAtivo, total) {
+    for (let i = 0; i < total; i++) {
+        const el = document.getElementById(`timeline-step-${i}`);
+        if (!el) continue;
+
+        el.classList.remove("ativo", "concluido");
+        if (i < indiceAtivo) {
+            el.classList.add("concluido");
+            el.querySelector(".timeline-bullet").innerText = "✓";
+        } else if (i === indiceAtivo) {
+            el.classList.add("ativo");
+            el.querySelector(".timeline-bullet").innerText = `${i + 1}`;
+            el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } else {
+            el.querySelector(".timeline-bullet").innerText = `${i + 1}`;
+        }
+    }
+}
+
+function desenharGrafoDijkstra(data) {
+    if (dijkstraAnimacaoId) cancelAnimationFrame(dijkstraAnimacaoId);
+
+    const rota = data.rota || [];
+    const etapas = (data.dijkstra && data.dijkstra.etapas) || [];
+    const largura = dijkstraCanvas.width;
+    const altura = dijkstraCanvas.height;
+    const nos = rota.map((id, indice) => ({
+        id,
+        x: rota.length === 1 ? largura / 2 : 48 + indice * ((largura - 96) / (rota.length - 1)),
+        y: altura / 2
+    }));
+
+    function desenharQuadro() {
+        const agora = performance.now();
+        dijkstraCtx.clearRect(0, 0, largura, altura);
+        dijkstraCtx.font = "11px ui-sans-serif, sans-serif";
+        dijkstraCtx.textAlign = "center";
+        dijkstraCtx.textBaseline = "middle";
+
+        if (!nos.length) {
+            dijkstraCtx.fillStyle = "#70879a";
+            dijkstraCtx.fillText("Aguardando uma rota viável", largura / 2, altura / 2);
+            return;
+        }
+
+        const deslocamento = (agora / 70) % 28;
+        etapas.forEach((etapa, indice) => {
+            const inicio = nos[indice];
+            const fim = nos[indice + 1];
+            if (!inicio || !fim) return;
+
+            dijkstraCtx.beginPath();
+            dijkstraCtx.moveTo(inicio.x, inicio.y);
+            dijkstraCtx.lineTo(fim.x, fim.y);
+            dijkstraCtx.strokeStyle = "#1e4b59";
+            dijkstraCtx.lineWidth = 4;
+            dijkstraCtx.setLineDash([8, 6]);
+            dijkstraCtx.lineDashOffset = -deslocamento;
+            dijkstraCtx.stroke();
+            dijkstraCtx.setLineDash([]);
+
+            dijkstraCtx.fillStyle = "#8ba5b5";
+            dijkstraCtx.fillText(`${etapa.custo_trecho_s}s`, (inicio.x + fim.x) / 2, inicio.y - 22);
+            dijkstraCtx.fillStyle = "#fbbf24";
+            dijkstraCtx.fillText(`${etapa.custo_acumulado_s}s`, (inicio.x + fim.x) / 2, inicio.y + 23);
+        });
+
+        nos.forEach((no, indice) => {
+            const pulso = 1 + Math.sin(agora / 260 + indice) * 0.12;
+            dijkstraCtx.beginPath();
+            dijkstraCtx.arc(no.x, no.y, 13 * pulso, 0, Math.PI * 2);
+            dijkstraCtx.fillStyle = indice === 0 ? "rgba(16, 185, 129, 0.2)" : (indice === nos.length - 1 ? "rgba(239, 68, 68, 0.2)" : "rgba(56, 189, 248, 0.14)");
+            dijkstraCtx.fill();
+            dijkstraCtx.beginPath();
+            dijkstraCtx.arc(no.x, no.y, 7, 0, Math.PI * 2);
+            dijkstraCtx.fillStyle = indice === 0 ? "#10b981" : (indice === nos.length - 1 ? "#ef4444" : "#38bdf8");
+            dijkstraCtx.fill();
+            dijkstraCtx.fillStyle = "#dbeafe";
+            dijkstraCtx.fillText(no.id, no.x, no.y + 39);
+        });
+
+        dijkstraAnimacaoId = requestAnimationFrame(desenharQuadro);
+    }
+
+    desenharQuadro();
+}
+
+async function carregarMalhaInicial() {
+    try {
+        const res = await fetch("/api/malha-inicial");
+        const dados = await res.json();
+        popularSelects(dados.nos);
+        dadosAtuais = dados;
+        desenharCenario(dadosAtuais);
+        document.getElementById("txtStatus").innerText = "Traçando rota inicial...";
+        await executarSimulacao(true);
+    } catch (err) {
+        document.getElementById("txtStatus").innerText = "Erro ao conectar com o backend.";
+    }
+}
+
+async function executarSimulacao(inicial = false, tentativa = 0) {
+    if (animacaoId) cancelAnimationFrame(animacaoId);
+
+    const origem = document.getElementById("selectOrigem").value;
+    const destino = document.getElementById("selectDestino").value;
+    const clima = document.getElementById("selectClima").value;
+
+    if (!origem || !destino) return;
+
+    try {
+        const res = await fetch("/api/simular", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ origem, destino, clima })
+        });
+        dadosAtuais = await res.json();
+
+        if (dadosAtuais.status === "erro_planilha") {
+            alert(dadosAtuais.mensagem);
+            return;
+        }
+
+        document.getElementById("txtClima").innerText = dadosAtuais.clima || "-";
+        document.getElementById("txtStatus").innerText = dadosAtuais.status;
+        document.getElementById("txtTempo").innerText = dadosAtuais.tempo_estimado_s ? `${dadosAtuais.tempo_estimado_s} s` : "N/A";
+        const metricas = dadosAtuais.metricas || {};
+        document.getElementById("txtTrechos").innerText = metricas.total_trechos ?? "-";
+        document.getElementById("txtBloqueios").innerText = metricas.trechos_bloqueados ?? "-";
+        document.getElementById("txtPontos").innerText = metricas.pontos_rota ?? "-";
+        document.getElementById("txtMapaStatus").innerText = `${metricas.trechos_bloqueados || 0} bloqueios detectados`;
+        const dijkstra = dadosAtuais.dijkstra || {};
+        document.getElementById("txtNosAlcancaveis").innerText = dijkstra.nos_alcancaveis ?? "-";
+        document.getElementById("txtArestasAvaliadas").innerText = dijkstra.arestas_avaliadas ?? "-";
+        document.getElementById("txtEtapasDijkstra").innerText = dijkstra.etapas?.length ?? "-";
+        document.getElementById("txtDijkstraStatus").innerText = dadosAtuais.status === "sucesso" ? "rota de menor custo encontrada" : "sem caminho viável";
+
+        if (inicial && dadosAtuais.status === "sem_caminho" && tentativa < 5) {
+            selecionarPontosAleatorios(Object.keys(dadosAtuais.nos).sort());
+            await executarSimulacao(true, tentativa + 1);
+            return;
+        }
+
+        // Constrói a timeline animada dos pontos
+        renderizarTimelineTrajeto(dadosAtuais.rota, dadosAtuais.nos);
+        desenharGrafoDijkstra(dadosAtuais);
+        desenharCenario(dadosAtuais);
+
+        if (dadosAtuais.rota && dadosAtuais.rota.length > 1) {
+            document.getElementById("txtStatus").innerText = "Aguardando partida (1s)...";
+            atualizarProgressoTimeline(0, dadosAtuais.rota.length);
+
+            setTimeout(() => {
+                document.getElementById("txtStatus").innerText = "Em trânsito...";
+                iniciarAnimacaoCarro(dadosAtuais.rota, dadosAtuais.nos);
+            }, 1000);
+        }
+    } catch (err) {
+        console.error("Erro na simulação:", err);
+    }
+}
+
+function desenharCenario(data) {
+    if (!ctx || !canvas) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const nos = data.nos;
+    if (!nos) return;
+
+    const origemId = document.getElementById("selectOrigem")?.value;
+    const destinoId = document.getElementById("selectDestino")?.value;
+
+    // 1. Ruas
+    if (data.trechos) {
+        data.trechos.forEach(t => {
+            const o = nos[t.origem];
+            const d = nos[t.destino];
+            if (!o || !d) return;
+
+            ctx.beginPath();
+            ctx.moveTo(o.x, o.y);
+            ctx.lineTo(d.x, d.y);
+            ctx.lineCap = "round";
+
+            if (t.bloqueado) {
+                ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
+                ctx.lineWidth = 6;
+                ctx.setLineDash([8, 8]);
+            } else {
+                ctx.strokeStyle = "#1e293b";
+                ctx.lineWidth = 6;
+                ctx.setLineDash([]);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.moveTo(o.x, o.y);
+            ctx.lineTo(d.x, d.y);
+            ctx.lineWidth = 3;
+            if (t.bloqueado) {
+                ctx.strokeStyle = "#ef4444";
+                ctx.setLineDash([6, 6]);
+            } else if (t.condicao === "obras_parciais") {
+                ctx.strokeStyle = "#f59e0b";
+                ctx.setLineDash([4, 4]);
+            } else {
+                ctx.strokeStyle = "#334155";
+                ctx.setLineDash([]);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        });
+    }
+
+    // 2. Trajeto
+    if (data.rota && data.rota.length > 1) {
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < data.rota.length - 1; i++) {
+            const p1 = nos[data.rota[i]];
+            const p2 = nos[data.rota[i + 1]];
+            if (p1 && p2) {
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+            }
+        }
+        ctx.strokeStyle = "rgba(16, 185, 129, 0.3)";
+        ctx.lineWidth = 11;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+
+        ctx.strokeStyle = "#10b981";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // 3. Vértices
+    for (const [id, no] of Object.entries(nos)) {
+        const isOrigem = (id === origemId);
+        const isDestino = (id === destinoId);
+
+        ctx.save();
+        if (isOrigem || isDestino) {
+            ctx.beginPath();
+            ctx.arc(no.x, no.y, 14, 0, 2 * Math.PI);
+            ctx.fillStyle = isOrigem ? "rgba(16, 185, 129, 0.25)" : "rgba(239, 68, 68, 0.25)";
+            ctx.fill();
+        }
+
+        ctx.beginPath();
+        const raio = (isOrigem || isDestino) ? 8 : 6;
+        ctx.arc(no.x, no.y, raio, 0, 2 * Math.PI);
+        ctx.fillStyle = isOrigem ? "#10b981" : (isDestino ? "#ef4444" : (CORES_TIPO[no.tipo] || "#64748b"));
+        ctx.fill();
+        ctx.strokeStyle = "#090d16";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.font = "bold 9px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText(id, no.x, no.y - 12);
+
+        if (isOrigem || isDestino) {
+            const rotulo = isOrigem ? "● PARTIDA" : "🏁 DESTINO";
+            ctx.font = "bold 10px sans-serif";
+            ctx.fillStyle = isOrigem ? "#4ade80" : "#f87171";
+            ctx.fillText(rotulo, no.x, no.y + 16);
+        }
+        ctx.restore();
+    }
+
+    // 4. Tooltip Flutuante
+    if (noFocado) {
+        ctx.save();
+        const padding = 10;
+        const textoPrincipal = `${noFocado.id}: ${noFocado.nome}`;
+        const textoSub = `Bairro: ${noFocado.bairro} (${noFocado.tipo})`;
+
+        ctx.font = "bold 11px sans-serif";
+        const w1 = ctx.measureText(textoPrincipal).width;
+        ctx.font = "10px sans-serif";
+        const w2 = ctx.measureText(textoSub).width;
+        const boxWidth = Math.max(w1, w2) + (padding * 2);
+        const boxHeight = 44;
+
+        let boxX = noFocado.x + 12;
+        let boxY = noFocado.y - 22;
+
+        if (boxX + boxWidth > canvas.width) boxX = noFocado.x - boxWidth - 12;
+        if (boxY < 10) boxY = 10;
+
+        ctx.fillStyle = "#1e293b";
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(textoPrincipal, boxX + padding, boxY + 18);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(textoSub, boxX + padding, boxY + 34);
+        ctx.restore();
+    }
+}
+
+function desenharCarro(x, y, angulo) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angulo);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(-13, -7, 26, 14);
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.fillRect(-5, -5, 13, 10);
+
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(12, -6, 2, 3);
+    ctx.fillRect(12, 3, 2, 3);
+
+    ctx.fillStyle = "#ef4444";
+    ctx.fillRect(-14, -6, 2, 3);
+    ctx.fillRect(-14, 3, 2, 3);
+
+    ctx.restore();
+}
+
+function iniciarAnimacaoCarro(rota, nos) {
+    let indiceTrecho = 0;
+    let progresso = 0;
+    const velocidadePasso = 0.008;
+
+    function animar() {
+        if (indiceTrecho >= rota.length - 1) {
+            document.getElementById("txtStatus").innerText = "Chegou ao destino!";
+            atualizarProgressoTimeline(rota.length - 1, rota.length);
+            return;
+        }
+
+        const pOrigem = nos[rota[indiceTrecho]];
+        const pDestino = nos[rota[indiceTrecho + 1]];
+
+        const xAtual = pOrigem.x + (pDestino.x - pOrigem.x) * progresso;
+        const yAtual = pOrigem.y + (pDestino.y - pOrigem.y) * progresso;
+        const angulo = Math.atan2(pDestino.y - pOrigem.y, pDestino.x - pOrigem.x);
+
+        desenharCenario(dadosAtuais);
+        desenharCarro(xAtual, yAtual, angulo);
+
+        // Atualiza visualmente o nó ativo na timeline à medida que avança o trecho
+        atualizarProgressoTimeline(indiceTrecho, rota.length);
+
+        progresso += velocidadePasso;
+        if (progresso >= 1) {
+            progresso = 0;
+            indiceTrecho++;
+        }
+
+        animacaoId = requestAnimationFrame(animar);
+    }
+
+    animar();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    iniciarMusicaFundo();
+    carregarMalhaInicial();
+});
+</script>
+</body>
+</html>
