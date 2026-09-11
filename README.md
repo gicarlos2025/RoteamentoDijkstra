@@ -63,10 +63,10 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Instale as dependências:
+Instale as dependências listadas no projeto:
 
 ```bash
-python -m pip install flask networkx pandas openpyxl
+python -m pip install -r requirements.txt
 ```
 
 ## Execução
@@ -136,6 +136,7 @@ Entrega a música de fundo usada pela interface.
 ```text
 RoteamentoDijkstra/
 ├── app.py
+├── requirements.txt
 ├── templates/
 │   └── index.html
 ├── freesound_community-loop-8-28783.mp3
