@@ -55,6 +55,9 @@
         #dijkstraCanvas { width: 100%; height: auto; min-height: 130px; border: 0; background: transparent; }
         .dijkstra-resumo { display: flex; flex-wrap: wrap; gap: 7px 18px; margin-top: 7px; color: #7890a1; font: 0.72em ui-sans-serif, sans-serif; }
         .dijkstra-resumo strong { color: #dbeafe; font-size: 1.15em; }
+        .app-footer { max-width: 1440px; margin: 18px auto 0; padding-top: 12px; border-top: 1px solid #1e3443; color: #7890a1; font: 0.74em ui-sans-serif, sans-serif; text-align: center; }
+        .app-footer a { color: #fbbf24; text-decoration: none; }
+        .app-footer a:hover { text-decoration: underline; }
         canvas {
             border: 1px solid #334155; 
             border-radius: 6px;
@@ -299,6 +302,11 @@
         <canvas id="mapaCanvas" width="950" height="700"></canvas>
     </div>
 </div>
+
+<footer class="app-footer">
+    Desenvolvido por <strong>Dev -X - Gian Silva</strong> ·
+    <a href="https://github.com/gicarlos2025" target="_blank" rel="noopener noreferrer">GitHub</a>
+</footer>
 
 <script>
 const canvas = document.getElementById("mapaCanvas");
